@@ -8,22 +8,23 @@ Environment notes (confirmed this session): `fred.stlouisfed.org` HTTPS times ou
 
 ---
 
-## Eurostat — HICP monthly (prc_hicp_manr / prc_hicp_aind)
+## Eurostat — HICP monthly: prc_hicp_minr (new ECOICOP classification) + frozen predecessors
 
-- **What**: Harmonised CPI for the EU: monthly rates of change (`prc_hicp_manr`), annual average rates, and index levels (`prc_hicp_aind`, 2015=100), by COICOP division (all items = `CP00`).
-- **Coverage**: All EU member states + aggregates. Aggregate geo codes verified in the dimension: `EA` = **euro area changing composition** (label: "EA11-1999 … EA20-2023, **EA21-2026**" — i.e. EA becomes 21 members in 2026), `EA20` = fixed 2023–2025 composition, `EA19`, `EU`, `EU27_2020`, `EU28`, `EEA`. **Recommendation: use `EA` (changing) for a continuous series, or `EA20` for the 2023–2025 fixed composition — never splice them silently** (composition changes are breaks in level-based series; rate series like manr are less affected).
-- **Frequency & lag**: Monthly. Latest period seen in API: **2025-12** (EA20 all-items annual rate = 2.3). ⚠️ That is a much longer lag than Eurostat's real publication cadence (flash estimates ~2 weeks after month-end) — the dissemination API bulk dataset appears to trail the press releases; check the flash-estimate datasets (`prc_hicp_calf`/`prc_hicp_cproc`) for fresher months before ingesting.
-- **Access (exact)**: `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&lang=EN&geo=EA20&coicop=CP00` → JSON-stat 2.0. Values are keyed by **flattened multi-dimension position** (parse `dimension.<dim>.category.index` to map — naive tail reads return false `None`s). Same pattern with `prc_hicp_aind` for index levels. Python: `requests.get(...).json()` + position mapping.
+- **What**: Harmonised CPI monthly: annual rates of change (`RCH_A`), monthly rates (`RCH_M`), 12-month moving average (`RCH_MV12MAVR`), index levels 2015=100 (`I15`) and 2025=100 (`I25`), by classification item.
+- **⚠️ Classification break at 2026-01 (verified live)**: HICP moved to the new ECOICOP v2 classification from **January 2026**. The new dataset is **`prc_hicp_minr`** (item dimension **`coicop18`**, all-items code **`TOTAL`**) — it carries **full back-history 1997-01 → 2026-07** on the new classification, so no splicing is needed. The predecessor datasets (`prc_hicp_manr`, `prc_hicp_aind`, COICOP codes like `CP00`) are **frozen at 2025-12** (verified: `manr` EA20 CP00 last = 2025-12 = 2.0; `sinceTimePeriod=2026-01` returns empty) — keep them only for pre-2026 cross-checks.
+- **Coverage**: 46 geos incl. `EA` (**euro area changing composition** — EA becomes 21 members in 2026), `EA21` (2026 fixed), `EA20` (2023–2025), `EA19`, `EU`, `EU27_2020` + all member states. 555 item codes. Use `EA` for a continuous series; do NOT silently splice `EA20`→`EA21` (composition break).
+- **Frequency & lag**: Monthly; latest obs seen **2026-07** (EA annual rate 2.9, monthly rate 0.2, index I25 103.24) ≈ 3-week lag. Current and healthy.
+- **Access (exact)**: `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr?format=JSON&lang=EN&freq=M&coicop18=TOTAL&geo=EA&unit=RCH_A` → JSON-stat 2.0. Values keyed by flattened multi-dimension position (parse `dimension.time.category.index` to map — naive tail reads return false `None`s). Same call with `unit=I25`/`I15` for levels, `unit=RCH_M` for monthly rates.
 - **License/cost**: Open, keyless (Eurostat reuse policy).
-- **Sample series seen (2026-08-19)**: `manr` EA20 CP00 2025-12 = **2.3** (annual rate); values confirmed non-null across 44 series at 2025-12 in the geo-wide pull.
-- **Verified**: ✅ Verified live 2026-08-19 (structure + values; the 2026-01+ window returned empty — consistent with the 2025-12 frontier).
-- **Notes/pitfalls**: JSON-stat flattened-index parsing trap (above). `sinceTimePeriod` beyond the data frontier silently returns `n_time=0`. HICP flash/first estimates are essentially not revised later — good for a monitoring pipeline (stable backfill).
+- **Sample series seen (2026-08-19)**: `minr` EA TOTAL `RCH_A`: 2026-03=2.6, 04=3.0, 05=3.2, 06=2.8, **07=2.9**; EA `I25` 2026-07=103.24; EA21 07=3.0; EA20 07=2.9; EU27 07=3.0; DE 07=2.8 (I25 103.2); FR 07=2.4. Full-history pull: 355 obs from 1997-01.
+- **Verified**: ✅ Verified live 2026-08-19 (structure + 2026 values + history depth; predecessors' freeze confirmed).
+- **Notes/pitfalls**: Dimension is **`coicop18`** (not `coicop`) — a `coicop=` filter returns HTTP 400 "dimension COICOP is not defined". All-items = **`TOTAL`** (not `CP00`). Eurostat occasionally returns HTTP 413 "asynchronous response" on very wide queries — filter by geo+unit and retry. HICP rates are essentially not revised post-publication — good for a monitoring pipeline. Index-base choice: `I25` (2025=100) is the new base; `I15` also served in `minr`.
 
 ## ECB — ICP (HICP via SDMX, euro area U2 changing composition)
 
 - **What**: The ESCB's HICP mirror in SDMX: annual rates of change (`ANR`), index (`INX`), by COICOP item.
 - **Coverage**: Euro area aggregate `U2` (**changing composition** — matches the project requirement; U2 becomes EA21-weighted as of 2026) + all national `REF_AREA`s (DE, FR, IT, ES verified).
-- **Frequency & lag**: Monthly. Latest obs seen: **2025-12** (consistent with Eurostat's frontier).
+- **Frequency & lag**: Monthly. Latest obs seen: **2025-12** — frozen alongside the ECOICOP v1 datasets; with ECOICOP v2 live at Eurostat (`prc_hicp_minr`, above), ECB ICP will presumably follow with a v2 key family — re-probe before relying on it for 2026 data.
 - **Access (exact)**: `https://data-api.ecb.europa.eu/service/data/ICP/M.U2.N.000000.4.ANR?format=csvdata&lastNObservations=3` → SDMX-CSV (`TIME_PERIOD, OBS_VALUE`). DSD dims: `FREQ.REF_AREA.ADJUSTMENT.ICP_ITEM.STS_INSTITUTION.ICP_SUFFIX`.
 - **License/cost**: Free, keyless (ECB reuse terms).
 - **Sample series seen (2026-08-19)**:
@@ -93,8 +94,8 @@ Environment notes (confirmed this session): `fred.stlouisfed.org` HTTPS times ou
 | Country | CPI/HICP source (freq, latest seen) | Nominal GDP source (freq, latest seen) |
 |---|---|---|
 | US | FRED `CPIAUCSL` (M, **2026-07**) | FRED `GDP` (Q, **2026-Q2**) |
-| Euro area | ECB ICP `M.U2.N.000000.4.*` (M, 2025-12) or Eurostat manr EA/EA20 (M, 2025-12) | IFS `Q.DE/FR/IT` members (Q, 2025-Q2); Eurostat namq pending; ECB MNA via portal |
-| Germany / FR / IT / ES | ECB ICP national (M, 2025-12) verified; Eurostat manr | IFS quarterly (Q, 2025-Q1/Q2) |
+| Euro area | **Eurostat `prc_hicp_minr`** EA TOTAL RCH_A/I25 (M, **2026-07**) — new ECOICOP v2; ECB ICP U2 (M, 2025-12, frozen) | IFS `Q.DE/FR/IT` members (Q, 2025-Q2); Eurostat namq pending; ECB MNA via portal |
+| Germany / FR / IT / ES | **Eurostat `minr` national** (M, **2026-07**; DE 2.8, FR 2.4 verified); ECB ICP national frozen 2025-12 | IFS quarterly (Q, 2025-Q1/Q2) |
 | UK | IFS `M.GB.PCPI_IX` (M, 2025-07); FRED stale 2025-03 | IFS `Q.GB.NGDP_SA_XDC` (Q, 2025-Q1) |
 | Japan | IFS `M.JP.PCPI_IX` (M, 2025-06); FRED JPN dead 2021 | IFS `Q.JP.NGDP_SA_XDC` (Q, 2025-Q1) |
 | China | IFS `M.CN.PCPI_IX` (M, 2025-07); NBS 403 | IFS annual only (`A.CN.NGDP_XDC` 2024) — quarterly gap |
@@ -103,7 +104,8 @@ Environment notes (confirmed this session): `fred.stlouisfed.org` HTTPS times ou
 
 ## Gaps
 
-1. **HICP freshness**: both Eurostat API and ECB ICP serve through **2025-12** as of 2026-08-19 — an ~8-month gap vs the known publication cadence. Before production, probe Eurostat flash/first-release datasets (`prc_hicp_cproc`, `prc_hicp_calf`) and the ECB portal (vs data-api) to see if fresher months live elsewhere; otherwise the HICP pipe inherits this lag.
+1. **HICP 2026 classification break — resolved**: `prc_hicp_manr`/`aind` (ECOICOP v1) are frozen at 2025-12 by design; the successor **`prc_hicp_minr`** (ECOICOP v2, dim `coicop18`, all-items `TOTAL`) serves 1997-01→2026-07 continuously. ECB ICP still ends 2025-12 — re-probe for an ECB v2 key family before using it for 2026.
+ag.
 2. **Eurostat namq_10_gdp values unpinned** (nulls under probed combos) — needs one browser-assisted session; interim = IFS quarterly members.
 3. **China quarterly nominal GDP** — IFS 404, NBS blocked; candidates: DBnomics `NBS` provider, or annual-only fallback.
 4. **UK after ONS API decommission** — IFS mirror is 13 months lagged; new ONS platform probe pending; manual download fallback.

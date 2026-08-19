@@ -22,7 +22,7 @@ All numbers below were read from live responses on 2026-08-19.
 | Debt health — cross-country | IMF FSI quarterly NPL (~100 countries; CN 2025-Q1=1.513, IN=2.344) | ~100 | Quarterly | 2025-Q1 |
 | Debt health — early warning | BIS DSR (HH & private non-financial) | 32 | Quarterly | 2025-Q4 |
 | Debt health — US detail | FRED delinquency/charge-off (7 series) | US | Quarterly | 2026-Q1 |
-| CPI deflator | FRED CPIAUCSL (US); ECB ICP U2 / Eurostat HICP (EA); IFS PCPI_IX (GB/JP/CN/IN, mirror-lagged) | Global | Monthly | 2026-07 (US) / 2025-12 (EA) / 2025-06~07 (IFS) |
+| CPI deflator | FRED CPIAUCSL (US); Eurostat `prc_hicp_minr` (EA, ECOICOP v2; ECB ICP frozen 2025-12); IFS PCPI_IX (GB/JP/CN/IN, mirror-lagged) | Global | Monthly | 2026-07 (US) / **2026-07 (EA)** / 2025-06~07 (IFS) |
 | Nominal GDP | FRED GDP (US); IFS NGDP_SA_XDC (GB/JP/IN quarterly; CN annual-only) | Global | Quarterly / Annual | 2026-Q2 (US) / 2025-Q1/Q2 (IFS) |
 | Government yields | US Treasury CSV; ECB YC U2; Japan MoF; BoE GLC | US/EA/JP/UK | Daily | 2026-08-18 |
 | Corporate yields / stress | ICE BofA via FRED: BAMLC0A0CM/H0A0HYM2 + EUR OAS pair | US + EUR | Daily | 2026-08-18 |
@@ -58,7 +58,7 @@ Structural gaps with no login-free source (documented in dossiers 03/06): China 
 - BIS DSR quarterly (the early-warning workhorse) + IMF FSI quarterly NPL (cross-country) + FRED US delinquency detail + ECB SUP NPE via DBnomics. WB NPL annual as documented fallback.
 
 **Deflators / normalizers**
-- US: FRED CPIAUCSL + GDP. EA: ECB ICP `M.U2.N.000000.4.*` (U2 changing composition) or Eurostat manr. Non-EU: IFS via DBnomics (accept ~13-month mirror lag for CN/IN/JP/GB, or map national SDMX later).
+- US: FRED CPIAUCSL + GDP. EA: **Eurostat `prc_hicp_minr`** (ECOICOP v2 since 2026-01: dim `coicop18`, all-items `TOTAL`, geo `EA` changing composition, index `I25`/rates `RCH_A`; full history 1997→2026-07 — the v1 datasets `manr`/`aind` and ECB ICP are frozen at 2025-12). Non-EU: IFS via DBnomics (accept ~13-month mirror lag for CN/IN/JP/GB, or map national SDMX later).
 
 **Yields**
 - Daily curves: US Treasury CSV; ECB YC (U2, G_N_A=AAA vs G_N_C=all-ratings — note the semantics!); Japan MoF (SJIS); BoE GLC zip. Monthly cross-check: FRED IRLTLT01 (no CN/IN). Corporate: ICE BofA via FRED (US IG/HY + EUR OAS); ECB MIR for bank lending rates; FRED MORTGAGE30US.
@@ -84,7 +84,7 @@ Key engineering notes from probing: host-level quirks are the main risk (FRED HT
 ## 5. Open items for the next phase
 
 1. Pin Eurostat `namq_10_gdp` / `nasq_10_f_bs` series filters (both returned nulls/400 under probed combos — one browser session against the Eurostat table browser should resolve).
-2. HICP API lag puzzle: both Eurostat and ECB ICP serve through 2025-12 only (vs ~2-week real-world lag) — probe flash datasets (`prc_hicp_cproc`) before production.
+2. ~~HICP API lag puzzle~~ **Resolved**: the 2025-12 frontier was the **ECOICOP v2 classification break** — new dataset `prc_hicp_minr` (dim `coicop18`, code `TOTAL`) serves 1997-01→2026-07 continuously; v1 datasets and ECB ICP keys are frozen at 2025-12 (re-probe ECB for a v2 key family before 2026 use).
 3. JS-gated sources (NY Fed HHDC, BoE IADB, EBA dashboard): one Browser Use session per quarter to resolve file URLs, then keyless download.
 4. China/India daily yield curves + PBOC TSF split: decide between registration (RBI DBIE), licensed vendor, or headless scraping — or accept BIS/IFS cadence.
 5. OECD PSD dimension mapping (quarterly gov debt workaround for EU/UK/JP) before trusting its %GDP series.
