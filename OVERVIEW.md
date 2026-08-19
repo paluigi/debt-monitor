@@ -89,3 +89,5 @@ Key engineering notes from probing: host-level quirks are the main risk (FRED HT
 4. China/India daily yield curves + PBOC TSF split: decide between registration (RBI DBIE), licensed vendor, or headless scraping — or accept BIS/IFS cadence.
 5. OECD PSD dimension mapping (quarterly gov debt workaround for EU/UK/JP) before trusting its %GDP series.
 6. Eurostat EDP quarterly: confirm whether a different table code serves the quarterly EDP notification data via API.
+7. First datasets acquired: World Bank NPL annual (154 economies → `data/wb_npl_annual.csv`) and IMF FSI NPL quarterly+annual (152 countries, CN/IN through 2025-Q1 → `data/imf_fsi_npl.csv`) via `scripts/acquire_npl.py`.
+8. Decisions pending (dossier 08): NY Fed HHDC manual download (recommended), RBI DBIE registration for India yields (recommended), EBA dashboard (optional), BoE IADB / ChinaBond (defer).
