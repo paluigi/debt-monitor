@@ -14,6 +14,8 @@ Research phase deliverable for the debt-monitor project: **what data exists, whe
 | [06-yields.md](06-yields.md) | Government yield curves + corporate IG/HY yields + lending rates | 15 | 11 |
 | [07-accounts-guide.md](07-accounts-guide.md) | Account setup: FRED key, RBI DBIE, what to skip | 6 | — |
 | [08-js-gated-sources.md](08-js-gated-sources.md) | JS-gated sources: value/effort analysis + verdicts | 5 | — |
+| [09-econ-news-feeds.md](09-econ-news-feeds.md) | Economic news: official RSS, wires, Google News RSS, GDELT | 15+ | 13 |
+| [10-fi-earnings-calls.md](10-fi-earnings-calls.md) | FI earnings calls & filings: EDGAR APIs, transcripts, 13F | 8 | 5 |
 
 Each dossier follows the same card format — **What / Coverage / Frequency & lag / Access (exact working endpoint) / License & cost / Sample series (ID, latest obs date + value) / Verified (result) / Notes & pitfalls** — and closes with a country × frequency matrix and an honest Gaps section. Failed/blocked sources are documented with evidence (that's what the ❌/⚠️ cards are for) so we never re-litigate them.
 

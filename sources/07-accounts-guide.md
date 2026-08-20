@@ -31,21 +31,30 @@ The only programmatic route to India's official granularity: sectoral deployment
 
 **What it unlocks**: India monthly credit split (currently only BIS quarterly aggregate, dossier 03) + G-sec daily yields (verified gap, dossier 06) + WSS weekly aggregates. **Highest-value registration after FRED.**
 
-## 3. OECD Data Explorer (optional)
+## 3. FMP + Finnhub free API keys (news & earnings-call transcripts)
+
+Two 5-minute signups that close the transcript/news-API gap (dossiers 09/10):
+
+- **FMP (Financial Modeling Prep)** — <https://site.financialmodelingprep.com/developer/docs> → sign up → free API key. Free/starter tier includes **earnings-call transcripts** (`/v3/earning_call_transcript/{ticker}`), earnings calendar, and economy news. This is the pragmatic keyless-substitute-free route to FI call transcripts for the top ~50 institutions.
+- **Finnhub** — <https://finnhub.io/register> → free key. Free tier: `/v1/news?category=economy`, company news, earnings calendar, some transcripts.
+
+Store as `FMP_API_KEY` / `FINNHUB_API_KEY`. Both verified 401-without-key (dossier 10 probes), i.e. signup genuinely required.
+
+## 4. OECD Data Explorer (optional)
 
 Most OECD data is keyless via SDMX (dossier 01); an account adds saved queries + larger extract limits on the Data Explorer UI. Only worth it if we adopt OECD PSD quarterly government debt (the EU/UK/JP workaround, dossier 02) and its dimension mapping proves painful — the API itself stays keyless.
 
 **Steps**: <https://data-explorer.oecd.org/> → sign in → "Save query". No key management.
 
-## 4. IMF SDMX (no account needed — clarification)
+## 5. IMF SDMX (no account needed — clarification)
 
 `api.imf.org/external/sdmx/2.1` is fully keyless (verified, dossiers 01/02). The old *IMF SDMX API* registration page (valid for the legacy `dataservices.imf.org` ) is NOT needed for our endpoints. Skip.
 
-## 5. World Bank / Eurostat / ECB / BIS / Treasury / DBnomics — all keyless
+## 6. World Bank / Eurostat / ECB / BIS / Treasury / DBnomics — all keyless
 
 Verified keyless in dossiers 01–06: World Bank API, Eurostat dissemination API, ECB data-api, BIS bulk zips, US Treasury FiscalData, DBnomics v22, Japan MoF CSVs, BoE GLC zip. No accounts.
 
-## 6. Sources NOT worth registering (avoid)
+## 7. Sources NOT worth registering (avoid)
 
 - **Investing.com / Trading Economics / Refinitiv / Bloomberg**: commercial licenses, not free tiers — out of scope.
 - **ChinaBond / CFETS chinamoney**: institutional registration; the public view is the JS portal anyway (dossier 06). Use akshare fallback or accept the gap.
@@ -58,6 +67,8 @@ Verified keyless in dossiers 01–06: World Bank API, Eurostat dissemination API
 |---|---|---|---|
 | FRED API key | 2 min, email only | Official US API (HTTPS, search, all series) | **High** — do now |
 | RBI DBIE | 5 min + email verify | India credit split + G-sec yields | **High** if India matters |
+| FMP (transcripts) | 3 min | FI earnings-call transcripts + calendar | **High** for FI narrative |
+| Finnhub (news) | 3 min | Economy news API + earnings calendar | Medium |
 | FINRA (CMDS) | 5 min | Historical TRACE aggregates | Low |
 | OECD Data Explorer | 2 min | Saved queries (API keyless anyway) | Low |
 | IMF SDMX / WB / Eurostat / ECB / BIS / Treasury / DBnomics | 0 | — (keyless) | — |

@@ -91,3 +91,4 @@ Key engineering notes from probing: host-level quirks are the main risk (FRED HT
 6. Eurostat EDP quarterly: confirm whether a different table code serves the quarterly EDP notification data via API.
 7. First datasets acquired: World Bank NPL annual (154 economies → `data/wb_npl_annual.csv`) and IMF FSI NPL quarterly+annual (152 countries, CN/IN through 2025-Q1 → `data/imf_fsi_npl.csv`) via `scripts/acquire_npl.py`.
 8. Decisions pending (dossier 08): NY Fed HHDC manual download (recommended), RBI DBIE registration for India yields (recommended), EBA dashboard (optional), BoE IADB / ChinaBond (defer).
+9. News & FI-disclosure layers added: official RSS (ECB/Fed/BoE/FSB/FDIC) + wires + Google News queries + GDELT timelines (dossier 09); EDGAR submissions/FTS/XBRL verified for FI filings with `items=2.02` earnings-discovery via FTS and Chrome-UA requirement (dossier 10). FMP/Finnhub free keys unlock transcripts (dossier 07).
