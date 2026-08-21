@@ -1,0 +1,43 @@
+[project]
+name = "debt-monitor"
+version = "0.1.0"
+description = "Debt monitor: scheduled collection of debt, health, deflator and yield data into MongoDB"
+readme = "README.md"
+authors = [
+    { name = "Luigi Palumbo", email = "20042921+paluigi@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "apscheduler>=3.11,<4",
+    "fastexcel>=0.21.0",
+    "feedparser>=6.0.14",
+    "httpx>=0.28.1",
+    "motor>=3.7.1",
+    "polars>=1.43.2",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv>=1.2.3",
+    "tenacity>=9.1.4",
+]
+
+[project.scripts]
+debt-monitor = "debt_monitor.main:main"
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+    "ruff>=0.16.3",
+]
