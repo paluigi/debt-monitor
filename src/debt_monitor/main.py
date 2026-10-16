@@ -1,14 +1,18 @@
-"""CLI entry point: `collect`, `schedule`, `list`."""
+"""CLI entry point: `collect`, `schedule`, `list`, `metrics`, `coverage`."""
 
 import argparse
 import asyncio
 import logging
 import signal
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 from debt_monitor.collectors.base import registered_collectors
+from debt_monitor.config import get_settings
+from debt_monitor.db import MongoRepository
+from debt_monitor.metrics import compute_and_store, coverage_rows, to_tidy_csv
 from debt_monitor.scheduler import Orchestrator, build_scheduler
 
 logger = logging.getLogger(__name__)
@@ -52,6 +56,45 @@ async def _schedule() -> None:
     await orchestrator.close()
 
 
+async def _metrics(actor: str, country: str, metric: str, export: bool) -> int:
+    repo = MongoRepository(get_settings())
+    try:
+        counts = await compute_and_store(repo)
+        print(f"computed: {counts['computed']} metrics stored: {counts['stored']}")
+        query: dict = {}
+        if actor:
+            query["actor"] = actor
+        if country:
+            query["country"] = country
+        if metric:
+            query["metric"] = metric
+        rows = await repo.find_many("metrics", query)
+        for info in coverage_rows(rows):
+            print(f"  {info['actor']:28} {info['metric']:24} {info['denominator']:22} {info['countries']:3d} countries  latest {info['latest']}")
+        if export:
+            out = Path("data/metrics/metrics.csv")
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(to_tidy_csv(rows))
+            print(f"exported {len(rows)} rows -> {out}")
+        return 0
+    finally:
+        repo.close()
+
+
+async def _coverage() -> int:
+    repo = MongoRepository(get_settings())
+    try:
+        rows = await repo.find_many("metrics", {})
+        if not rows:
+            print("no metrics stored yet — run `debt-monitor metrics` first")
+            return 1
+        for info in coverage_rows(rows):
+            print(f"  {info['actor']:28} {info['metric']:24} {info['denominator']:22} {info['countries']:3d} countries  latest {info['latest']}")
+        return 0
+    finally:
+        repo.close()
+
+
 def main() -> None:
     load_dotenv()
     parser = argparse.ArgumentParser(
@@ -71,6 +114,14 @@ def main() -> None:
     sub.add_parser("schedule", help="run the daily scheduler forever")
     sub.add_parser("list", help="list registered collectors")
 
+    metrics_parser = sub.add_parser("metrics", help="compute derived metrics from stored observations")
+    metrics_parser.add_argument("--actor", choices=["households", "non_financial_corporations", "financial_corporations", "government"])
+    metrics_parser.add_argument("--country", help="ISO2 country code filter")
+    metrics_parser.add_argument("--metric", choices=["interest_to_income", "debt_service_to_income", "debt_to_income"])
+    metrics_parser.add_argument("--export", action="store_true", help="also write data/metrics/metrics.csv")
+
+    sub.add_parser("coverage", help="show metrics coverage summary")
+
     args = parser.parse_args()
     _configure_logging(args.verbose)
 
@@ -87,6 +138,12 @@ def main() -> None:
 
     if args.command == "schedule":
         asyncio.run(_schedule())
+
+    if args.command == "metrics":
+        sys.exit(asyncio.run(_metrics(args.actor, args.country, args.metric, args.export)))
+
+    if args.command == "coverage":
+        sys.exit(asyncio.run(_coverage()))
 
 
 if __name__ == "__main__":

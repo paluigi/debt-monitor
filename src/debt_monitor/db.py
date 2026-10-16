@@ -64,6 +64,15 @@ class MongoRepository:
     async def find_one(self, collection: str, query: dict[str, Any]) -> dict | None:
         return await self._db[collection].find_one(query)
 
+    async def find_many(
+        self,
+        collection: str,
+        query: dict[str, Any],
+        projection: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        cursor = self._db[collection].find(query, projection)
+        return await cursor.to_list(length=None)
+
     async def distinct(
         self, collection: str, key: str, query: dict[str, Any] | None = None
     ) -> list[Any]:

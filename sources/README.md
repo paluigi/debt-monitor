@@ -16,6 +16,7 @@ Research phase deliverable for the debt-monitor project: **what data exists, whe
 | [08-js-gated-sources.md](08-js-gated-sources.md) | JS-gated sources: value/effort analysis + verdicts | 5 | — |
 | [09-econ-news-feeds.md](09-econ-news-feeds.md) | Economic news: official RSS, wires, Google News RSS, GDELT | 15+ | 13 |
 | [10-fi-earnings-calls.md](10-fi-earnings-calls.md) | FI earnings calls & filings: EDGAR APIs, transcripts, 13F | 8 | 5 |
+| [11-debt-service-and-incomes.md](11-debt-service-and-incomes.md) | Metrics inputs: sector interest paid (D.41), sector incomes, gov revenue, maturing principal | 9 | 8 (probed 2026-10-16) |
 
 Each dossier follows the same card format — **What / Coverage / Frequency & lag / Access (exact working endpoint) / License & cost / Sample series (ID, latest obs date + value) / Verified (result) / Notes & pitfalls** — and closes with a country × frequency matrix and an honest Gaps section. Failed/blocked sources are documented with evidence (that's what the ❌/⚠️ cards are for) so we never re-litigate them.
 
@@ -23,6 +24,7 @@ Each dossier follows the same card format — **What / Coverage / Frequency & la
 
 - **Volumes**: BIS Total Credit bulk (quarterly, 48 countries, gov+HH+NFC, %GDP) · IMF GDD/WEO annual breadth (190/207 countries) · US Z.1/H.8 (quarterly/weekly) · ECB BSI/QSA (monthly/quarterly, EA+members)
 - **Health**: BIS DSR (quarterly, 32 countries) · IMF FSI quarterly NPL (~100 countries incl. CN/IN) · FRED US delinquency/charge-off (quarterly) · ECB SUP NPE (quarterly, EA)
+- **Debt-service inputs** (dossier 11): Eurostat sector accounts D.41 interest payable + B6G/B2A3G incomes (quarterly, 32 geos) · FRED/BEA + Z.1 interest & income (US) · ONS UKEA mirror (UK) · OECD T12 annual gov interest/revenue (~60–90) · BIS WS_NA_SEC_DSS S+LS maturing securities (37 issuers)
 - **Deflators/normalizers**: FRED CPIAUCSL/GDP (monthly/quarterly, US) · ECB ICP + Eurostat HICP (monthly, EA) · IMF IFS via DBnomics (monthly CPI + quarterly GDP, GB/JP/CN/IN)
 - **Yields**: US Treasury daily CSV · ECB YC daily (U2) · Japan MoF daily · BoE GLC daily · ICE BofA IG/HY + EUR OAS daily via FRED
 
