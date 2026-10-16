@@ -51,7 +51,7 @@ def parse_sdmx_series(xml_text: str) -> list[dict]:
 class ImfCollector(BaseCollector):
     name = "imf"
     collection = "imf"
-    description = "IMF GDD sector debt %GDP (annual) + WEO gov gross debt %GDP (annual)"
+    description = "IMF GDD sector debt %GDP (annual) + WEO gov debt %GDP/level + nominal GDP (annual)"
 
     async def collect(self) -> CollectResult:
         parts: list[str] = []
@@ -84,27 +84,34 @@ class ImfCollector(BaseCollector):
         weo_series: list[dict] = []
         # `WEO/all` returns 200-but-empty (dossier 01); explicit country lists
         # work. Derive them from the GDD parse, chunked to keep URLs sane.
+        # Indicators: GGXWDG_NGDP = debt %GDP (dashboard), GGXWDG = debt level
+        # (national currency, billions), NGDP = nominal GDP (national currency,
+        # billions) — the levels pair enables debt/revenue for the metrics layer.
+        weo_indicators = ("GGXWDG_NGDP", "GGXWDG", "NGDP")
         gdd_countries = sorted({s["dims"].get("COUNTRY", "") for s in gdd_series} - {""})
         for i in range(0, len(gdd_countries), 50):
             chunk = "+".join(gdd_countries[i : i + 50])
             weo_text = await self.http.get_text(
-                f"{WEO_URL_BASE}/{chunk}.GGXWDG_NGDP.A", timeout=120.0
+                f"{WEO_URL_BASE}/{chunk}.{'+'.join(weo_indicators)}.A", timeout=120.0
             )
             weo_series.extend(parse_sdmx_series(weo_text))
             await asyncio.sleep(0.3)
+        # WEO serves raw national-currency units (DE 2025 GDP = 4.53e12);
+        # the metrics layer scales to billions.
+        weo_unit = {"GGXWDG_NGDP": "% of GDP", "GGXWDG": "national currency", "NGDP": "national currency"}
         weo_observations = [
             self.obs(
                 dataset="WEO",
-                series="GGXWDG_NGDP",
+                series=s["dims"].get("INDICATOR", ""),
                 country=s["dims"].get("COUNTRY", ""),
                 period=period,
                 period_type="year",
                 value=value,
-                unit="% of GDP",
-                dimensions={"indicator": "GGXWDG_NGDP"},
+                unit=weo_unit.get(s["dims"].get("INDICATOR", ""), "native"),
+                dimensions={"indicator": s["dims"].get("INDICATOR", "")},
             )
             for s in weo_series
-            if s["dims"].get("INDICATOR") == "GGXWDG_NGDP"
+            if s["dims"].get("INDICATOR") in weo_indicators
             for period, value in s["observations"]
             if period.isdigit() and int(period) <= current_year  # drop forecasts
         ]

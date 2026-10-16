@@ -20,6 +20,8 @@ uv sync                   # creates .venv and installs dependencies
 uv run debt-monitor list                  # registered collectors
 uv run debt-monitor collect               # one-shot run of everything
 uv run debt-monitor collect us_treasury   # single source
+uv run debt-monitor metrics --export      # derived metrics + data/metrics/metrics.csv
+uv run debt-monitor coverage              # metrics coverage summary
 uv run debt-monitor schedule              # daily scheduler (foreground)
 ```
 
@@ -27,6 +29,7 @@ Configuration (see `.env.example`): `MONGO_URI` (defaults to
 `mongodb://localhost:27017`), `MONGO_DB_NAME`, `FRED_API_KEY`, `FMP_API_KEY`,
 `FINNHUB_API_KEY`, and the schedule (`SCHEDULE_HOUR`/`SCHEDULE_MINUTE`/
 `SCHEDULE_TZ`, default 06:00 Europe/Rome, plus APScheduler `jitter=900`).
+The scheduler recomputes derived metrics at HH:45 after the collection run.
 
 Retries: every HTTP call is wrapped with tenacity (`wait_exponential_jitter`,
 4 attempts); a failing collector is retried once more at the collector level
@@ -36,24 +39,52 @@ and never blocks the others. Every run is logged to the `_runs` collection.
 
 | Collection | Source | Content |
 |---|---|---|
-| `bis` | BIS bulk zips | Total credit stocks (gov/HH/NFC/private) + debt-service ratios, quarterly |
-| `imf` | IMF SDMX | GDD sector debt %GDP + WEO gov debt %GDP, annual |
-| `fred` | FRED API | US CPI/GDP/federal debt, Treasury yields, ICE BofA spreads, delinquency/charge-offs, mortgage rate |
+| `bis` | BIS bulk zips | Total credit stocks (gov/HH/NFC/private) + debt-service ratios + debt securities by residual maturity, quarterly |
+| `imf` | IMF SDMX | GDD sector debt %GDP + WEO gov debt %GDP/level + nominal GDP, annual |
+| `fred` | FRED API | US CPI/GDP/federal debt, yields, ICE BofA spreads, delinquency/charge-offs, mortgage rate, DPI + interest payments (dossier 11) |
 | `ecb` | ECB data-api | BSI MFI loans (monthly), QSA sector stocks, MIR lending rates, gov yield curves (daily), HICP via the new `HICP` flow (ECOICOP v2) |
-| `eurostat` | Eurostat API | HICP monthly `prc_hicp_minr` (ECOICOP v2) + EDP Maastricht debt annual |
+| `eurostat` | Eurostat API | HICP monthly + EDP Maastricht debt + sector accounts (D.41 interest payable, B6G/B2A3G incomes) + quarterly GDP + gov revenue (dossier 11) |
 | `us_treasury` | FiscalData + Treasury CSV | Debt-to-the-penny (daily) + daily par yield curve |
-| `dbnomics` | DBnomics mirrors | Fed Z.1/H.8, IMF IFS CPI+GDP, ECB SUP NPE, IMF FSI NPL |
-| `worldbank` | World Bank API | NPL ratio, annual, ~200 economies |
+| `dbnomics` | DBnomics mirrors | Fed Z.1/H.8 (stocks + interest paid), IMF IFS CPI+GDP, ECB SUP NPE, IMF FSI NPL, ONS UKEA (UK sector accounts), OECD T12 gov interest/revenue (dossier 11) |
+| `worldbank` | World Bank API | NPL ratio + central-gov revenue %GDP, annual, ~200 economies |
 | `nyfed` | NY Fed HHDC | Household Debt & Credit report XLSX, quarterly (URL rolls to `HHD_C_Report_{YYYY}Q{n}`) |
 | `boe` | Bank of England | Nominal gilt spot curve, daily |
 | `japan_mof` | Japan MoF | JGB yield curve, daily |
 | `news` | RSS/GDELT/Finnhub | Economic news articles, deduped by URL |
 | `fi_filings` | EDGAR FTS + FMP | Earnings-related 8-Ks + FI earnings-call transcripts |
+| `metrics` | derived | Debt-burden metrics computed from the collections above (see below) |
 | `_runs` | internal | Per-collector run log (status, doc counts, errors) |
 
 Quantitative records share one schema: `_id` = sha256(source\|dataset\|series\|
 country\|period\|dims), so re-runs upsert idempotently. NY Fed sheets are
 archived as raw rows tagged with `report_quarter`.
+
+## Derived metrics (`metrics` collection)
+
+Per actor × country × period, computed from the collections above (sources and
+conventions in [sources/11-debt-service-and-incomes.md](sources/11-debt-service-and-incomes.md);
+`src/debt_monitor/metrics.py` for the implementation):
+
+- **interest_to_income** — sector interest payable (D.41) ÷ income. Actors:
+  households (income = gross disposable income), non-financial corporations
+  (gross operating surplus; gross value added for the US), financial
+  corporations, government (denominators: GDP **and** general-government
+  revenue).
+- **debt_service_to_income** — households/NFC: BIS DSR as published (interest +
+  amortisation). Government: (interest + debt securities maturing ≤ 1 year,
+  BIS WS_NA_SEC_DSS `S`+`LS`) ÷ GDP — a securities-only rollover-risk proxy
+  (the US has no `LS` split, so its proxy understates).
+- **debt_to_income** — end-of-period debt stock (BIS total credit; WEO for the
+  annual global tier) ÷ trailing income; government gets both `gdp` and
+  `government_revenue` denominators.
+
+Every metric doc carries full component provenance (numerator/denominator
+source, series, value, scale) and `method="observed"` — no estimates; gaps are
+documented in the dossier's feasibility matrix (notably: no open source for
+government interest outside EU/US/UK/OECD; no household income for Japan,
+China, India). Conventions: Eurostat/ONS quarterly flows are trailing-4-quarter
+sums; FRED/BEA SAAR values are used as annual rates; annual-only inputs produce
+annual rows only.
 
 ## Deliberately excluded
 
@@ -70,7 +101,10 @@ archived as raw rows tagged with `report_quarter`.
 
 ## Repo layout
 
-- `src/debt_monitor/` — the pipeline (collectors, scheduler, CLI)
+- `src/debt_monitor/` — the pipeline (collectors, metrics layer, scheduler, CLI)
 - `sources/` — data-source research dossiers driving every endpoint choice
-- `scripts/acquire_npl.py` — one-off research harvest (kept for reference;
-  its logic now lives in the `dbnomics`/`worldbank` collectors)
+- `scripts/` — one-off research harvests and dossier-11 probe scripts
+  (`acquire_npl.py`, `probe11_*.py`; the NPL logic now lives in the
+  `dbnomics`/`worldbank` collectors)
+- `data/` — committed CSV exports (`data/metrics/metrics.csv` via
+  `debt-monitor metrics --export`)

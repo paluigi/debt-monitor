@@ -40,6 +40,12 @@ SERIES: tuple[tuple[str, PeriodType, str, str], ...] = (
     ("IRLTLT01JPM156N", "month", "JP", "Japan 10Y gov bond"),
     ("IRLTLT01GBM156N", "month", "GB", "UK 10Y gov bond"),
     ("IRLTLT01USM156N", "month", "US", "US 10Y gov bond (LT av)"),
+    # Metrics-layer inputs (dossier 11; all SAAR annual-rate levels):
+    ("DPI", "quarter", "US", "Disposable personal income, SAAR"),
+    ("B069RC1Q027SBEA", "quarter", "US", "Personal interest payments, SAAR"),
+    ("A091RC1Q027SBEA", "quarter", "US", "Federal gov interest payments, SAAR"),
+    ("Y705RC1Q027SBEA", "quarter", "US", "State & local gov interest payments, SAAR"),
+    ("A455RC1Q027SBEA", "quarter", "US", "Gross value added of NFC, SAAR"),
 )
 
 

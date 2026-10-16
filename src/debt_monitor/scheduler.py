@@ -94,4 +94,21 @@ def build_scheduler(orchestrator: Orchestrator) -> AsyncIOScheduler:
         jitter=900,
         replace_existing=True,
     )
+
+    async def daily_metrics() -> None:
+        from debt_monitor.metrics import compute_and_store
+
+        await compute_and_store(orchestrator.repo)
+
+    # Derived metrics run after the collection hour (collectors finish ~06:xx).
+    scheduler.add_job(
+        daily_metrics,
+        CronTrigger(hour=settings.schedule_hour, minute=45),
+        id="daily_metrics",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3_600,
+        jitter=600,
+        replace_existing=True,
+    )
     return scheduler
